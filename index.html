@@ -1,0 +1,98 @@
+<!doctype html>
+<html lang="de">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#173d2b">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Vegan Tokyo">
+<link rel="manifest" href="./manifest.webmanifest">
+<link rel="apple-touch-icon" href="./apple-touch-icon.png">
+<link rel="icon" href="./icon-192.png">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<title>Vegan Tokyo</title>
+<style>
+:root{--bg:#f4f7f4;--card:#fff;--ink:#102019;--muted:#65716b;--green:#173d2b;--green2:#287451;--line:#dce4df;--chip:#e7efe9;--shadow:0 8px 30px rgba(21,61,43,.09)}
+*{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+html,body{margin:0;min-height:100%;font-family:-apple-system,BlinkMacSystemFont,"SF Pro Display","SF Pro Text",Arial,sans-serif;background:var(--bg);color:var(--ink)}
+body{padding-bottom:max(24px,env(safe-area-inset-bottom))}
+header{padding:max(18px,env(safe-area-inset-top)) 16px 13px;background:linear-gradient(160deg,#173d2b,#245c42);color:#fff}
+.top{display:flex;align-items:center;justify-content:space-between;gap:12px}.title{font-size:28px;font-weight:800;letter-spacing:-.7px}.subtitle{margin-top:4px;font-size:13px;opacity:.82}
+.locate{border:0;background:rgba(255,255,255,.14);color:#fff;border-radius:14px;padding:10px 12px;font-weight:700}
+#map{height:44vh;min-height:330px;width:100%;background:#dfe7df}
+.panel{max-width:850px;margin:-18px auto 0;position:relative;z-index:500;padding:0 12px}
+.sheet{background:var(--bg);border-radius:22px 22px 0 0;padding:14px 4px}
+.search input{width:100%;border:1px solid var(--line);background:#fff;border-radius:14px;padding:13px 14px;font-size:16px;outline:none}
+.filters{display:flex;gap:8px;overflow-x:auto;padding:12px 0 4px;scrollbar-width:none}.filters::-webkit-scrollbar{display:none}
+.chip{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:999px;padding:9px 12px;font-size:13px;font-weight:700;white-space:nowrap}
+.chip.active{background:var(--green);color:#fff;border-color:var(--green)}
+.count{font-size:13px;color:var(--muted);padding:10px 2px 2px}
+.card{background:#fff;border:1px solid var(--line);border-radius:18px;padding:14px;margin:10px 0;box-shadow:var(--shadow)}
+.cardhead{display:flex;justify-content:space-between;align-items:flex-start;gap:10px}.name{font-size:17px;font-weight:800;line-height:1.2}.area{font-size:13px;color:var(--muted);margin-top:5px}.tag{font-size:11px;font-weight:800;background:var(--chip);padding:6px 8px;border-radius:999px;white-space:nowrap}
+.note{font-size:14px;line-height:1.45;margin-top:10px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.btn{border:0;border-radius:12px;padding:10px 12px;font-size:13px;font-weight:800;text-decoration:none;display:inline-flex;align-items:center;justify-content:center}
+.primary{background:var(--green);color:#fff}.secondary{background:#eef2ef;color:var(--ink)}.fav{margin-left:auto;background:#fff;border:1px solid var(--line);color:var(--ink)}
+.fab{position:fixed;right:18px;bottom:max(18px,env(safe-area-inset-bottom));z-index:1000;width:58px;height:58px;border-radius:50%;border:0;background:var(--green2);color:#fff;font-size:30px;box-shadow:0 10px 28px rgba(0,0,0,.22)}
+dialog{width:min(92vw,520px);border:0;border-radius:22px;padding:0;box-shadow:0 30px 70px rgba(0,0,0,.3)}dialog::backdrop{background:rgba(0,0,0,.45)}
+.modal{padding:20px}.modal h2{margin:0 0 14px}.field{margin:10px 0}.field label{display:block;font-size:12px;color:var(--muted);font-weight:700;margin-bottom:5px}.field input,.field select,.field textarea{width:100%;border:1px solid var(--line);border-radius:12px;padding:11px;font-size:15px;background:#fff}.modalactions{display:flex;gap:8px;justify-content:flex-end;margin-top:14px}
+.small{font-size:12px;color:var(--muted);padding:14px 2px 90px}.leaflet-control-attribution{font-size:9px}
+</style>
+</head>
+<body>
+<header>
+<div class="top">
+<div><div class="title">Vegan Tokyo 🌱</div><div class="subtitle">Tomigaya · Yoyogi · Shibuya · Harajuku · Omotesando</div></div>
+<button class="locate" id="locateBtn">◎ Standort</button>
+</div>
+</header>
+<div id="map"></div>
+<div class="panel">
+<div class="sheet">
+<div class="search"><input id="search" type="search" placeholder="Ort, Gegend oder Kategorie suchen …"></div>
+<div class="filters" id="filters"></div>
+<div class="count" id="count"></div>
+<div id="list"></div>
+<div class="small">Öffnungszeiten und Sortiment können sich ändern. Eigene Orte und Favoriten werden lokal auf diesem Gerät gespeichert.</div>
+</div>
+</div>
+<button class="fab" id="addBtn" aria-label="Ort hinzufügen">＋</button>
+<dialog id="addDialog">
+<form method="dialog" class="modal">
+<h2>Ort hinzufügen</h2>
+<div class="field"><label>Name</label><input id="pName" required></div>
+<div class="field"><label>Kategorie</label><select id="pCat"><option>Einkauf</option><option>Brunch</option><option>Lunch</option><option>Dinner</option><option>Café</option><option>Bäckerei</option><option>Sonstiges</option></select></div>
+<div class="field"><label>Gegend / Adresse</label><input id="pArea" required placeholder="z. B. Shibuya, Tokyo"></div>
+<div class="field"><label>Notiz</label><textarea id="pNote" rows="3"></textarea></div>
+<div class="modalactions"><button class="btn secondary" value="cancel">Abbrechen</button><button class="btn primary" id="savePlace" value="default">Speichern</button></div>
+</form>
+</dialog>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script>
+const seedPlaces = [{"name": "Bio c' Bon Tomigaya", "cat": "Einkauf", "area": "Tomigaya, Shibuya, Tokyo", "note": "Bio-Supermarkt mit vielen pflanzlichen Produkten"}, {"name": "ABioFarm's Market", "cat": "Einkauf", "area": "Tomigaya, Shibuya, Tokyo", "note": "Bio-Lebensmittel, Gemüse und Früchte"}, {"name": "Natural Lawson Tomigaya", "cat": "Einkauf", "area": "Tomigaya, Shibuya, Tokyo", "note": "Convenience Store mit vegan-freundlichen Produkten"}, {"name": "F & F Yoyogi-Uehara", "cat": "Einkauf", "area": "Yoyogi-Uehara, Shibuya, Tokyo", "note": "Naturkost und pflanzliche Lebensmittel"}, {"name": "15/e organic Omotesando", "cat": "Einkauf", "area": "Omotesando, Tokyo", "note": "Bio-Shop und Take-away"}, {"name": "TOKYO VEGAN BAKES", "cat": "Bäckerei", "area": "Shimokitazawa, Tokyo", "note": "100 % vegane Bäckerei"}, {"name": "THE NUTS EXCHANGE", "cat": "Brunch", "area": "Tomigaya, Shibuya, Tokyo", "note": "Veganes Café und Brunch"}, {"name": "ANANAS COFFEE VEGAN TOKYO", "cat": "Café", "area": "Kamiyamacho, Shibuya, Tokyo", "note": "Veganes Café"}, {"name": "Vegan Bistro Jangara", "cat": "Dinner", "area": "Harajuku, Tokyo", "note": "Veganes japanisches Restaurant"}, {"name": "veggie tempo", "cat": "Lunch", "area": "Tomigaya, Shibuya, Tokyo", "note": "Vegan-freundlicher Lunch"}, {"name": "SHOJIN RAMEN 菜", "cat": "Lunch", "area": "Shibuya, Tokyo", "note": "Vegane japanische Ramen"}, {"name": "Masaka Vegan Izakaya", "cat": "Dinner", "area": "Shibuya PARCO, Tokyo", "note": "Veganes Izakaya"}, {"name": "Tudore Tranquility", "cat": "Dinner", "area": "Yoyogi-Uehara, Tokyo", "note": "Veganes Dinner"}];
+const custom = JSON.parse(localStorage.getItem("veganTokyoCustom")||"[]");
+const places=[...seedPlaces,...custom];
+let active="Alle", query="";
+const favourites=new Set(JSON.parse(localStorage.getItem("veganTokyoFavs")||"[]"));
+const map=L.map("map",{zoomControl:true}).setView([35.667,139.694],14);
+L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png",{maxZoom:19,attribution:"© OpenStreetMap"}).addTo(map);
+const markers=L.layerGroup().addTo(map);
+const cache=JSON.parse(localStorage.getItem("veganTokyoGeo")||"{}");
+const filters=document.getElementById("filters"), list=document.getElementById("list"), count=document.getElementById("count"), search=document.getElementById("search");
+function categories(){return ["Alle","Favoriten",...new Set(places.map(p=>p.cat))]}
+function apple(p){return "https://maps.apple.com/?q="+encodeURIComponent(p.name+" "+p.area)}
+function google(p){return "https://www.google.com/maps/search/?api=1&query="+encodeURIComponent(p.name+" "+p.area)}
+function visible(){return places.filter(p=>{const catOk=active==="Alle"||(active==="Favoriten"&&favourites.has(p.name))||p.cat===active;const q=(p.name+" "+p.area+" "+p.cat+" "+(p.note||"")).toLowerCase();return catOk&&q.includes(query.toLowerCase())})}
+function renderFilters(){filters.innerHTML="";categories().forEach(c=>{const b=document.createElement("button");b.className="chip"+(c===active?" active":"");b.textContent=c;b.onclick=()=>{active=c;render()};filters.appendChild(b)})}
+function render(){renderFilters();const arr=visible();count.textContent=arr.length+" Orte";list.innerHTML=arr.map(p=>`<article class="card"><div class="cardhead"><div><div class="name">${p.name}</div><div class="area">${p.area}</div></div><span class="tag">${p.cat}</span></div><div class="note">${p.note||""}</div><div class="actions"><a class="btn primary" href="${apple(p)}"> Maps</a><a class="btn secondary" href="${google(p)}">Google Maps</a><button class="btn fav" onclick='toggleFav(${JSON.stringify(p.name)})'>${favourites.has(p.name)?"♥":"♡"}</button></div></article>`).join("");refreshMap(arr)}
+window.toggleFav=name=>{favourites.has(name)?favourites.delete(name):favourites.add(name);localStorage.setItem("veganTokyoFavs",JSON.stringify([...favourites]));render()}
+search.addEventListener("input",e=>{query=e.target.value;render()})
+async function geocode(p){const key=p.name+"|"+p.area;if(cache[key])return cache[key];try{const url="https://nominatim.openstreetmap.org/search?format=json&limit=1&q="+encodeURIComponent(p.name+" "+p.area);const r=await fetch(url,{headers:{"Accept-Language":"en"}});const d=await r.json();if(d[0]){cache[key]=[+d[0].lat,+d[0].lon];localStorage.setItem("veganTokyoGeo",JSON.stringify(cache));return cache[key]}}catch(e){}return null}
+let mapToken=0;
+async function refreshMap(arr){const token=++mapToken;markers.clearLayers();const bounds=[];for(const p of arr){const ll=await geocode(p);if(token!==mapToken)return;if(ll){bounds.push(ll);markers.addLayer(L.marker(ll).bindPopup("<b>"+p.name+"</b><br>"+p.cat+" · "+p.area+"<br><a href='"+apple(p)+"'>Apple Maps</a>"))}await new Promise(r=>setTimeout(r,120))}if(bounds.length>1)map.fitBounds(bounds,{padding:[25,25],maxZoom:15});else if(bounds.length===1)map.setView(bounds[0],15)}
+document.getElementById("locateBtn").onclick=()=>{if(!navigator.geolocation)return;navigator.geolocation.getCurrentPosition(pos=>{const ll=[pos.coords.latitude,pos.coords.longitude];L.circleMarker(ll,{radius:9}).addTo(map).bindPopup("Dein Standort").openPopup();map.setView(ll,15)},()=>alert("Standort konnte nicht gelesen werden."))}
+const dlg=document.getElementById("addDialog");document.getElementById("addBtn").onclick=()=>dlg.showModal();
+document.getElementById("savePlace").onclick=e=>{const name=document.getElementById("pName").value.trim(),area=document.getElementById("pArea").value.trim();if(!name||!area){e.preventDefault();return}const p={name,cat:document.getElementById("pCat").value,area,note:document.getElementById("pNote").value.trim(),custom:true};custom.push(p);localStorage.setItem("veganTokyoCustom",JSON.stringify(custom));places.push(p);setTimeout(render,50)}
+render();if("serviceWorker" in navigator)navigator.serviceWorker.register("./sw.js").catch(()=>{});
+</script>
+</body>
+</html>
